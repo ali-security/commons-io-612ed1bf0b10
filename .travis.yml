@@ -33,9 +33,16 @@ matrix:
     - jdk: openjdk-ea
       env: JACOCO_SKIP=true
 
+# The focal image's apt repos no longer carry bellsoft-java14, so the openjdk14
+# leg provisions JDK 14 from the jdk.java.net GA archive instead.
+before_install:
+  - if [ "$TRAVIS_JDK_VERSION" = "openjdk14" ]; then wget -q https://download.java.net/java/GA/jdk14.0.2/205943a0976c4ed48cb16f1043c5c647/12/GPL/openjdk-14.0.2_linux-x64_bin.tar.gz -O /tmp/jdk14.tar.gz && tar -xzf /tmp/jdk14.tar.gz -C /tmp && export JAVA_HOME=/tmp/jdk-14.0.2 && export PATH="$JAVA_HOME/bin:$PATH" && java -version; fi
+
 # --no-transfer-progress requires Maven 3.6.1+. Otherwise use --batch-mode
 script:
   - mvn -V --no-transfer-progress
+  # Name every skipped test and its surefire skip message (assumption / @Disabled reason).
+  - for f in target/surefire-reports/TEST-*.xml; do awk '/<testcase /{tc=$0} /<skipped/{print "SKIPPED - " tc " " $0}' "$f"; done
 
 after_success:
   - mvn -V --no-transfer-progress clean cobertura:cobertura coveralls:report -Ptravis-cobertura
